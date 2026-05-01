@@ -33,6 +33,7 @@ public class GoldenHead implements Listener {
     private ItemStack goldenHeadItem;
     private final List<PotionEffect> effects = new ArrayList<>();
     private int consumeCooldownSeconds;
+    private double consumeTimeSeconds;
 
     private final Map<UUID, Long> lastConsumeAt = new HashMap<>();
     private final Map<UUID, BukkitTask> cooldownActionBarTasks = new HashMap<>();
@@ -44,6 +45,7 @@ public class GoldenHead implements Listener {
 
     public void reload() {
         this.consumeCooldownSeconds = Math.max(0, ConfigManager.getInt("MATCH-SETTINGS.GOLDEN-HEAD.COOLDOWN"));
+        this.consumeTimeSeconds = ConfigManager.getConfig().getDouble("MATCH-SETTINGS.GOLDEN-HEAD.CONSUME-TIME", 0.0);
 
         ItemStack item = ConfigManager.getGuiItem("MATCH-SETTINGS.GOLDEN-HEAD.ITEM").get();
         if (item == null) {
@@ -54,10 +56,26 @@ public class GoldenHead implements Listener {
 
         applyCustomTexture(this.goldenHeadItem);
         markAsGoldenHead(this.goldenHeadItem);
+        applyFoodComponent(this.goldenHeadItem);
         this.goldenHeadItem.setAmount(1);
 
         this.effects.clear();
         loadEffects();
+    }
+
+    private void applyFoodComponent(ItemStack item) {
+        if (this.consumeTimeSeconds > 0) {
+            org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                org.bukkit.inventory.meta.components.FoodComponent food = meta.getFood();
+                food.setNutrition(0);
+                food.setSaturation(0f);
+                food.setCanAlwaysEat(true);
+                food.setEatSeconds((float) this.consumeTimeSeconds);
+                meta.setFood(food);
+                item.setItemMeta(meta);
+            }
+        }
     }
 
     public ItemStack getItem() {
