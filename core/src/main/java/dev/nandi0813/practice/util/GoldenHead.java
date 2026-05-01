@@ -10,6 +10,7 @@ import dev.nandi0813.practice.manager.profile.enums.ProfileStatus;
 import dev.nandi0813.practice.util.actionbar.ActionBarPriority;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.Consumable;
+import io.papermc.paper.datacomponent.item.consumable.ItemUseAnimation;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
@@ -76,7 +77,12 @@ public class GoldenHead implements Listener {
                 meta.setFood(food);
                 item.setItemMeta(meta);
 
-                item.setData(DataComponentTypes.CONSUMABLE, Consumable.consumable().consumeSeconds((float) this.consumeTimeSeconds).build());
+                item.setData(DataComponentTypes.CONSUMABLE, Consumable.consumable()
+                        .consumeSeconds((float) this.consumeTimeSeconds)
+                        .animation(ItemUseAnimation.EAT)
+                        .sound(org.bukkit.Sound.ENTITY_GENERIC_EAT.key())
+                        .hasConsumeParticles(true)
+                        .build());
             }
         }
     }
@@ -191,6 +197,7 @@ public class GoldenHead implements Listener {
 
             if (onlinePlayer == null ||
                 !onlinePlayer.isOnline() ||
+                profile.getStatus() == null ||
                 (!profile.getStatus().equals(ProfileStatus.MATCH) &&
                  !profile.getStatus().equals(ProfileStatus.EVENT) &&
                  !profile.getStatus().equals(ProfileStatus.FFA))
@@ -214,9 +221,14 @@ public class GoldenHead implements Listener {
                 return;
             }
 
+            String msg = ConfigManager.getString("MATCH-SETTINGS.GOLDEN-HEAD.ACTION-BAR-COOLDOWN-MSG");
+            if (msg == null || msg.isEmpty()) {
+                msg = "<gold>🕒 <yellow>%remaining%s";
+            }
+
             profile.getActionBar().setMessage(
                     "golden_head",
-                    ConfigManager.getString("MATCH-SETTINGS.GOLDEN-HEAD.ACTION-BAR-COOLDOWN-MSG").replace("%remaining%", String.valueOf(remaining)),
+                    msg.replace("%remaining%", String.valueOf(remaining)),
                     2,
                     ActionBarPriority.HIGHEST
             );
@@ -275,6 +287,11 @@ public class GoldenHead implements Listener {
 
         ItemStack item = e.getItem();
         if (item == null || !isGoldenHead(item)) return;
+
+        // Auto-patch items from kits that might be missing components
+        if (this.consumeTimeSeconds > 0 && (!item.hasData(DataComponentTypes.FOOD) || !item.hasData(DataComponentTypes.CONSUMABLE))) {
+            applyFoodComponent(item);
+        }
 
         Player player = e.getPlayer();
         Profile profile = ProfileManager.getInstance().getProfile(player);
