@@ -8,6 +8,8 @@ import dev.nandi0813.practice.manager.profile.Profile;
 import dev.nandi0813.practice.manager.profile.ProfileManager;
 import dev.nandi0813.practice.manager.profile.enums.ProfileStatus;
 import dev.nandi0813.practice.util.actionbar.ActionBarPriority;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.Consumable;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
@@ -71,9 +73,10 @@ public class GoldenHead implements Listener {
                 food.setNutrition(0);
                 food.setSaturation(0f);
                 food.setCanAlwaysEat(true);
-                food.setEatSeconds((float) this.consumeTimeSeconds);
                 meta.setFood(food);
                 item.setItemMeta(meta);
+
+                item.setData(DataComponentTypes.CONSUMABLE, Consumable.consumable().consumeSeconds((float) this.consumeTimeSeconds).build());
             }
         }
     }
