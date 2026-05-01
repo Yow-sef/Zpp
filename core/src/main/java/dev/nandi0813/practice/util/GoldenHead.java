@@ -223,36 +223,21 @@ public class GoldenHead implements Listener {
         this.cooldownActionBarTasks.put(playerId, task);
     }
 
-    @EventHandler
-    public void onGoldenHeadInteract(PlayerInteractEvent e) {
-        Action action = e.getAction();
-        if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) return;
-
-        ItemStack item = e.getItem();
-        if (item == null || !isGoldenHead(item)) return;
-
-        e.setCancelled(true);
-
-        Player player = e.getPlayer();
-        Profile profile = ProfileManager.getInstance().getProfile(player);
-        if (profile == null) return;
-
-        long remainingSeconds = getRemainingCooldownSeconds(player.getUniqueId());
-        if (remainingSeconds > 0) {
-            startCooldownActionBar(profile);
-            return;
+    private void applyGoldenHeadEffects(Player player, ItemStack item, boolean isInstant) {
+        if (isInstant) {
+            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_BURP, 1.0f, 1.0f);
+            int amount = item.getAmount();
+            if (amount == 1) {
+                player.getInventory().setItemInMainHand(null);
+            } else {
+                item.setAmount(amount - 1);
+            }
         }
 
-        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_BURP, 1.0f, 1.0f);
-
         this.lastConsumeAt.put(player.getUniqueId(), System.currentTimeMillis());
-        startCooldownActionBar(profile);
-
-        int amount = item.getAmount();
-        if (amount == 1) {
-            player.getInventory().setItemInMainHand(null);
-        } else {
-            item.setAmount(amount - 1);
+        Profile profile = ProfileManager.getInstance().getProfile(player);
+        if (profile != null) {
+            startCooldownActionBar(profile);
         }
 
         for (PotionEffect effect : effects) {
@@ -275,6 +260,41 @@ public class GoldenHead implements Listener {
                 player.addPotionEffect(effect);
         }
 
-        player.updateInventory();
+        if (isInstant) {
+            player.updateInventory();
+        }
+    }
+
+    @EventHandler
+    public void onGoldenHeadInteract(PlayerInteractEvent e) {
+        Action action = e.getAction();
+        if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) return;
+
+        ItemStack item = e.getItem();
+        if (item == null || !isGoldenHead(item)) return;
+
+        Player player = e.getPlayer();
+        Profile profile = ProfileManager.getInstance().getProfile(player);
+        if (profile == null) return;
+
+        long remainingSeconds = getRemainingCooldownSeconds(player.getUniqueId());
+        if (remainingSeconds > 0) {
+            e.setCancelled(true);
+            startCooldownActionBar(profile);
+            return;
+        }
+
+        if (this.consumeTimeSeconds <= 0) {
+            e.setCancelled(true);
+            applyGoldenHeadEffects(player, item, true);
+        }
+    }
+
+    @EventHandler
+    public void onGoldenHeadConsume(org.bukkit.event.player.PlayerItemConsumeEvent e) {
+        ItemStack item = e.getItem();
+        if (item != null && isGoldenHead(item)) {
+            applyGoldenHeadEffects(e.getPlayer(), item, false);
+        }
     }
 }
