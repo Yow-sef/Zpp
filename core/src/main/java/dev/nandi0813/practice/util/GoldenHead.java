@@ -48,7 +48,7 @@ public class GoldenHead implements Listener {
 
     public void reload() {
         this.consumeCooldownSeconds = Math.max(0, ConfigManager.getInt("MATCH-SETTINGS.GOLDEN-HEAD.COOLDOWN"));
-        this.consumeTimeSeconds = ConfigManager.getConfig().getDouble("MATCH-SETTINGS.GOLDEN-HEAD.CONSUME-TIME", 0.0);
+        this.consumeTimeSeconds = Math.max(0.0, ConfigManager.getConfig().getDouble("MATCH-SETTINGS.GOLDEN-HEAD.CONSUME-TIME", 0.0));
 
         ItemStack item = ConfigManager.getGuiItem("MATCH-SETTINGS.GOLDEN-HEAD.ITEM").get();
         if (item == null) {
@@ -288,8 +288,8 @@ public class GoldenHead implements Listener {
         ItemStack item = e.getItem();
         if (item == null || !isGoldenHead(item)) return;
 
-        // Auto-patch items from kits that might be missing components
-        if (this.consumeTimeSeconds > 0 && (!item.hasData(DataComponentTypes.FOOD) || !item.hasData(DataComponentTypes.CONSUMABLE))) {
+        // Auto-patch items from kits that might be missing components. Always apply to avoid unreliable hasData checks.
+        if (this.consumeTimeSeconds > 0) {
             applyFoodComponent(item);
         }
 
@@ -313,8 +313,17 @@ public class GoldenHead implements Listener {
     @EventHandler
     public void onGoldenHeadConsume(org.bukkit.event.player.PlayerItemConsumeEvent e) {
         ItemStack item = e.getItem();
-        if (item != null && isGoldenHead(item)) {
-            applyGoldenHeadEffects(e.getPlayer(), item, false);
+        if (item == null || !isGoldenHead(item)) return;
+
+        Player player = e.getPlayer();
+        long remainingSeconds = getRemainingCooldownSeconds(player.getUniqueId());
+        if (remainingSeconds > 0) {
+            e.setCancelled(true);
+            Profile profile = ProfileManager.getInstance().getProfile(player);
+            if (profile != null) startCooldownActionBar(profile);
+            return;
         }
+
+        applyGoldenHeadEffects(player, item, false);
     }
 }
