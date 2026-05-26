@@ -82,6 +82,12 @@ public enum AdapterUtil {
                 .replaceText(replace("%arena%", Common.deserializeMiniMessage(match.getArena().getDisplayName())))
                 .replaceText(replace("%ladder%", Common.deserializeMiniMessage(match.getLadder().getDisplayName())));
     }
+    private static String getPlaceholderKey(String prefix, String suffix) {
+        if (prefix.endsWith("Team")) {
+            return "%" + prefix + Character.toUpperCase(suffix.charAt(0)) + suffix.substring(1) + "%";
+        }
+        return "%" + prefix + suffix + "%";
+    }
 
     /**
      * Replaces team placeholders for a given team prefix (team1, team2, partyTeam, enemyTeam)
@@ -92,14 +98,15 @@ public enum AdapterUtil {
         Component coloredRounds = team.getColor().append(getRoundString(winsNeeded, match.getWonRounds(team), team.getColor()));
 
         return line
-                .replaceText(replace("%" + prefix + "name%", team.getNameComponent()))
-                .replaceText(replace("%" + prefix + "color%", team.getColor()))
-                .replaceText(replace("%" + prefix + "players%", String.valueOf(match.getTeamPlayers(team).size())))
-                .replaceText(replace("%" + prefix + "alivePlayers%", String.valueOf(match.getTeamAlivePlayers(team).size())))
-                .replaceText(replace("%" + prefix + "color%%" + prefix + "rounds%", coloredRounds))
-                .replaceText(replace("%" + prefix + "rounds%", rounds))
-                .replaceText(replace("%" + prefix + "roundsNumber%", String.valueOf(match.getWonRounds(team))));
+                .replaceText(replace(getPlaceholderKey(prefix, "name"), team.getNameComponent()))
+                .replaceText(replace(getPlaceholderKey(prefix, "color"), team.getColor()))
+                .replaceText(replace(getPlaceholderKey(prefix, "players"), String.valueOf(match.getTeamPlayers(team).size())))
+                .replaceText(replace(getPlaceholderKey(prefix, "alivePlayers"), String.valueOf(match.getTeamAlivePlayers(team).size())))
+                .replaceText(replace(getPlaceholderKey(prefix, "color") + getPlaceholderKey(prefix, "rounds"), coloredRounds))
+                .replaceText(replace(getPlaceholderKey(prefix, "rounds"), rounds))
+                .replaceText(replace(getPlaceholderKey(prefix, "roundsNumber"), String.valueOf(match.getWonRounds(team))));
     }
+
 
     /**
      * Replaces player placeholders for top players in party FFA
