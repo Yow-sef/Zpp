@@ -24,7 +24,9 @@ import dev.nandi0813.practice.manager.server.sound.SoundManager;
 import dev.nandi0813.practice.manager.server.sound.SoundType;
 import dev.nandi0813.practice.util.playerutil.PlayerUtil;
 import lombok.Getter;
+import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffect;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -159,17 +161,18 @@ public class Duel extends Match implements Team {
                     SoundManager.getInstance().getSound(SoundType.MATCH_PLAYER_DEATH).play(this.getPeople());
                     dev.nandi0813.practice.manager.fight.util.PlayerUtil.clearInventory(player);
                     PlayerUtil.healToMaxHealth(player);
+                    setSpectatorOnDeath(player);
                 } else if (isScoringLadder()) {
                     // Scoring ladder (like Boxing) - death doesn't end round
                     return;
                 } else {
                     // Default death behavior for standard ladders
                     this.getCurrentStat(player).end(true);
-                    PlayerUtil.setFightPlayer(player, ladder);
                     if (ladder.isDropInventory())
                         addEntityChange(dev.nandi0813.practice.manager.fight.util.PlayerUtil.dropPlayerInventory(player));
                     dev.nandi0813.practice.manager.fight.util.PlayerUtil.clearInventory(player);
                     PlayerUtil.healToMaxHealth(player);
+                    setSpectatorOnDeath(player);
                     SoundManager.getInstance().getSound(SoundType.MATCH_PLAYER_DEATH).play(this.getPeople());
                     endRound = true;
                 }
@@ -184,6 +187,19 @@ public class Duel extends Match implements Team {
             round.setRoundWinner(winnerPlayer);
             round.endRound();
         }
+    }
+
+    /**
+     * Puts an eliminated player into Spectator mode for the duration of the round/match-end
+     * Gets reverted automatically to Survival either when the next round starts
+     */
+    private void setSpectatorOnDeath(Player player) {
+        for (PotionEffect potionEffect : player.getActivePotionEffects())
+            player.removePotionEffect(potionEffect.getType());
+        player.setFireTicks(0);
+        player.setGameMode(GameMode.SPECTATOR);
+        player.setAllowFlight(true);
+        player.setFlying(true);
     }
 
     @Override

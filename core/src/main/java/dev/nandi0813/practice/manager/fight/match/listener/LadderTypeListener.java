@@ -14,6 +14,7 @@ import dev.nandi0813.practice.manager.fight.match.enums.RoundStatus;
 import dev.nandi0813.practice.manager.fight.match.runnable.game.BridgeArrowRunnable;
 import dev.nandi0813.practice.manager.fight.match.util.KnockbackUtil;
 import dev.nandi0813.practice.manager.fight.match.util.MatchFightPlayer;
+import dev.nandi0813.practice.manager.fight.match.type.duel.Duel;
 import dev.nandi0813.practice.manager.fight.match.util.TeamUtil;
 import dev.nandi0813.practice.manager.fight.util.*;
 import dev.nandi0813.practice.manager.fight.util.Stats.Statistic;
@@ -61,6 +62,8 @@ public class LadderTypeListener implements Listener {
     private static final String SHIELD_SKIP_VANILLA_TICK_PATH = AXE_LADDER_SETTINGS_PATH + ".SKIP-VANILLA-DAMAGE-TICK-WHEN-SHIELD-BLOCKED";
     private static final int SKYWARS_KILLER_EXP_LEVEL_REWARD = 5;
     private static final int SKYWARS_ENCHANT_LAPIS_AMOUNT = 3;
+    /** How long ticks to let the vanilla death animation play before we force-respawn a duel loser. */
+    private static final long DUEL_DEATH_ANIMATION_TICKS = 15L;
 
 
     /**
@@ -680,7 +683,10 @@ public class LadderTypeListener implements Listener {
         e.setDroppedExp(0);
         e.setKeepInventory(true);
         e.setKeepLevel(true);
-        e.setCancelled(true);
+        e.setDeathMessage(null);
+
+        boolean playVanillaDeathAnimation = match instanceof Duel;
+        e.setCancelled(!playVanillaDeathAnimation);
 
         DamageSource damageSource = e.getDamageSource();
         Player killer;
@@ -695,8 +701,14 @@ public class LadderTypeListener implements Listener {
             cause = DeathCause.EXPLOSION_BY_PLAYER;
         }
         DeathCause finalCause = cause;
-        Bukkit.getScheduler().runTaskLater(ZonePractice.getInstance(), () ->
-                match.killPlayer(player, killer, finalCause.getMessage().replace("%killer%", killer != null ? killer.getName() : "Unknown")), 1L);
+
+        long delayTicks = playVanillaDeathAnimation ? DUEL_DEATH_ANIMATION_TICKS : 1L;
+        Bukkit.getScheduler().runTaskLater(ZonePractice.getInstance(), () -> {
+            if (playVanillaDeathAnimation && player.isOnline() && player.isDead()) {
+                player.spigot().respawn();
+            }
+            match.killPlayer(player, killer, finalCause.getMessage().replace("%killer%", killer != null ? killer.getName() : "Unknown"));
+        }, delayTicks);
 
         if (killer != null) {
             Statistic statistic = match.getCurrentStat(killer);
@@ -708,6 +720,16 @@ public class LadderTypeListener implements Listener {
                 killer.giveExpLevels(SKYWARS_KILLER_EXP_LEVEL_REWARD);
             }
         }
+    }
+
+    @EventHandler
+    public void onMatchRespawn(PlayerRespawnEvent e) {
+        Player player = e.getPlayer();
+
+        Match match = MatchManager.getInstance().getLiveMatchByPlayer(player);
+        if (match == null) return;
+
+        e.setRespawnLocation(player.getLocation());
     }
 
     private static void onEntityDamageByEntity(EntityDamageByEntityEvent e) {
